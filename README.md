@@ -1,2 +1,21 @@
 # virtwold
 Wake-on-LAN for libvirt based VMs
+
+## Introduction
+This is a daemon which listens for wake-on-LAN ("WOL") packets, and upon spotting one, tries to start the virtual machine with the associated MAC address.
+
+One use-case (my use case) is to have a gaming VM that doesn't need to be running all the time.  NVIDIA Gamestream and Moonlight both have the ability to send WOL packets in an attempt to wake an associated system.  For "real" hardware, this works great.  Unfortunately, for VMs it doesn't really do anything since there's no physical NIC snooping for the WOL packet.  This daemon attempts to solve that.
+
+## Mechanics
+When started, this daemon will use `libpcap` to make a listener on the specified network interface, listening for packets that look like they might be wake-on-lan.  Due to how `pcap` works, the current filter is for UDP sent to the broadcast address with a length of 144 bytes.  This seems to generate very low false-positives, doesn't require the NIC to be in promiscuous mode, and overall seems like a decent filter.
+
+Upon receipt of a (probable) WOL packet, the daemon extracts the first MAC address (WOL packets are supposed to repeat the target machine MAC a few times).
+
+With a MAC address in-hand, the program then connects to the local `libvirt` daemon via `/var/run/libvirt/libvirt-sock`, and gets an XML formatted list of every Virtual Machine configured (yuck).  An XML query to list all of the MAC addresses in the configured VMs, and compares that with the MAC from the WOL packet.  If a match is found, and the VM isn't already running, the daemon asks `libvirtd` to start the associated VM.
+
+## Usage
+Usage is pretty staightforward, as the command only needs one argument: the name of the network interface to listen on.  Specify this with the `--interface` flag (e.g., `--interface enp44s0`).
+
+The daemon will keep running until killed with a SIGINT (`^c`).
+
+Because this daemon, and wake-on-LAN, operate by MAC addresses, any VMs that are a candidate to be woken must have a hard-coded MAC in their machine configuration.
