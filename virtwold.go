@@ -6,6 +6,8 @@
 //
 // Assumes the VM has a static MAC configured
 // Assumes libvirtd connection is at /var/run/libvirt/libvirt-sock
+//
+// Filters on len=144 (WOL packet) and len=234 (WOL packet with password)
 
 package main
 
@@ -25,9 +27,9 @@ import (
 )
 
 func main() {
-	var iface string                               // Interface we'll listen on
-	var buffer = int32(1600)                       // Buffer for packets received
-	var filter = "udp and broadcast and len = 144" // PCAP filter to catch UDP WOL packets
+	var iface string                                            // Interface we'll listen on
+	var buffer = int32(1600)                                    // Buffer for packets received
+	var filter = "udp and broadcast and (len = 144 or len=234)" // PCAP filter to catch UDP WOL packets
 
 	flag.StringVar(&iface, "interface", "", "Network interface name to listen on")
 	flag.Parse()
