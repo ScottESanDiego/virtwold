@@ -1,0 +1,31 @@
+#!/sbin/openrc-run
+# Copyright 2021 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+name="virtwold daemon"
+description="Virtual Wake-on-LAN Daemon"
+command=/usr/bin/virtwold
+command_args="--interface ${VIRTWOLD_INTERFACE}"
+
+PIDFILE=/run/virtwold.pid
+
+depend() {
+	need net
+}
+
+start() {
+	start-stop-daemon \
+		--start \
+		--exec ${command} \
+		--background \
+		--stdout-logger /usr/bin/logger \
+		--make-pidfile \
+		--pidfile "${PIDFILE}" \
+		-- ${command_args}
+}
+
+stop() {
+	start-stop-daemon \
+		--stop \
+		--pidfile "${PIDFILE}"
+}

@@ -1,0 +1,4 @@
+# /etc/conf.d/virtwold
+#
+# Specify the interface to be used
+VIRTWOLD_INTERFACE="eth0"
