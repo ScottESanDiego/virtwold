@@ -23,10 +23,10 @@ Because this daemon, and wake-on-LAN, operate by MAC addresses, any VMs that are
 ## System Integration
 
 ### systemd example service
-There's a systemd service template example in `init-scripts/virtwold@.service` that should make it easy to configure for any interfaces that you need to run on
+There's a systemd service template example in `init-scripts/systemd/virtwold@.service` that should make it easy to configure for any interfaces that you need to run on
 
 ## OpenRC example init script
-Systems which use openrc can find an example init script and associated conf file in `init-scripts/openrc`.  The interface should be adjusted to match your particular needs (e.g., swap `eth0` for `enp44s0` or something like that).
+Systems which use openrc can find an example init script and associated conf file in `init-scripts/openrc/`.  The interface should be adjusted to match your particular needs (e.g., swap `eth0` for `enp44s0` or something like that).
 
 ## Gentoo ebuild
 An ebuild for Gentoo systems is available in [here](https://github.com/ScottESanDiego/scotterepo/tree/main/app-emulation/virtwold), although it only installs OpenRC init files (since that's what I use).
