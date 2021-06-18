@@ -19,3 +19,6 @@ Usage is pretty staightforward, as the command only needs one argument: the name
 The daemon will keep running until killed with a SIGINT (`^c`).
 
 Because this daemon, and wake-on-LAN, operate by MAC addresses, any VMs that are a candidate to be woken must have a hard-coded MAC in their machine configuration.
+
+## systemd example service
+There's a systemd service template example in virtwold@.service that should make it easy to configure for any interfaces that you need to run on

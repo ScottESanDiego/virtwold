@@ -1,0 +1,23 @@
+; An example systemd service template for virtwold
+; Using a service template lets you start multiple copies
+; of the daemon and control which interface it listens to
+; by doing something like: systemctl enable --now virtwold@br1
+; to start the daemon on the br1 network interface
+; 
+; This will let you start multiple daemons easily on every interface
+; that you need things to work with
+[Unit]
+Description=libvirt wake on lan daemon
+After=network.target
+Wants=libvirtd.service
+
+[Service]
+Type=simple
+
+; You'll want to update the path here to where you place the final compiled binary
+ExecStart=/usr/local/bin/virtwold -interface %i
+Restart=on-failure
+RestartSec=30s
+
+[Install]
+WantedBy=multi-user.target
