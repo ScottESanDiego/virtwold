@@ -136,7 +136,7 @@ func WakeVirtualMachine(mac string) bool {
 						log.Fatalf("Failed to resume domain: %v", err)
 					}
 			        default:
-					fmt.Printf("System %s is in a state that cannot be woken up. State: %d", d.Name, state)
+					fmt.Printf("System %s is already running or in a state that cannot be woken from. State: %d\n", d.Name, state)
 				}
 			}
 		}
