@@ -111,20 +111,32 @@ func WakeVirtualMachine(mac string) bool {
 		for _, list := range xmlquery.Find(querydoc, "//domain/devices/interface/mac/@address") {
 			// Use the strings.EqualFold function to do a case-insensitive comparison of MACs
 			if strings.EqualFold(list.InnerText(), mac) {
-				active, err := l.DomainIsActive(d)
+				stateInt, _, err := l.DomainGetState(d, 0)
 				if err != nil {
-					log.Fatalf("failed to check domain active state: %v", err)
+					log.Fatalf("failed to check domain state: %v", err)
 				}
 
-				// Check that the system isn't already active
-				// Silly that "active" is an int, not a bool
-				if active != 0 {
-					fmt.Printf("System %s is already awake\n", d.Name)
-				} else {
+				state := libvirt.DomainState(stateInt)
+				// fmt.Printf("Domain state is %v\n", state)
+
+				switch state {
+				case libvirt.DomainShutoff, libvirt.DomainCrashed:
 					fmt.Printf("Waking system: %s at MAC %s\n", d.Name, mac)
 					if err := l.DomainCreate(d); err != nil {
 						log.Fatalf("Failed to start domain: %v", err)
 					}
+				case libvirt.DomainPmsuspended:
+					fmt.Printf("PM Wakeup system: %s at MAC %s\n", d.Name, mac)
+					if err := l.DomainPmWakeup(d, 0); err != nil {
+						log.Fatalf("Failed to pm wakeup domain: %v", err)
+					}
+				case libvirt.DomainPaused:
+					fmt.Printf("Resume system: %s at MAC %s\n", d.Name, mac)
+					if err := l.DomainResume(d); err != nil {
+						log.Fatalf("Failed to resume domain: %v", err)
+					}
+			        default:
+					fmt.Printf("System %s is in a state that cannot be woken up. State: %d", d.Name, state)
 				}
 			}
 		}
