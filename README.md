@@ -31,3 +31,5 @@ Systems which use openrc can find an example init script and associated conf fil
 ## Gentoo ebuild
 An ebuild for Gentoo systems is available in [here](https://github.com/ScottESanDiego/scotterepo/tree/main/app-emulation/virtwold), although it only installs OpenRC init files (since that's what I use).
 
+## Archlinux PKGBUILD
+Users of Arch can install `virtwold` from the PKGBUILD in AUR located [here](https://aur.archlinux.org/packages/virtwold).
