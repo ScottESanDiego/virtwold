@@ -11,10 +11,13 @@ When started, this daemon will use `libpcap` to make a listener on the specified
 
 Upon receipt of a (probable) WOL packet, the daemon extracts the first MAC address (WOL packets are supposed to repeat the target machine MAC a few times).
 
-With a MAC address in-hand, the program then connects to the local `libvirt` daemon via `/var/run/libvirt/libvirt-sock`, and gets an XML formatted list of every Virtual Machine configured (yuck).  An XML query to list all of the MAC addresses in the configured VMs, and compares that with the MAC from the WOL packet.  If a match is found, and the VM isn't already running, the daemon asks `libvirtd` to start the associated VM.
+With a MAC address in-hand, the program then connects to a `libvirtd` daemon via , supplied libvirt URI and gets an XML formatted list of every Virtual Machine configured (yuck), and iterates through all interfaces getting the MAC address.  That MAC is then compared with the MAC from the WOL packet.  If a match is found, the `libvirtd` daemon is asked to start the associated VM.
 
 ## Usage
-Usage is pretty staightforward, as the command only needs one argument: the name of the network interface to listen on.  Specify this with the `--interface` flag (e.g., `--interface enp44s0`).
+Usage is pretty staightforward, as the command needs two arguments: 
+1. The name of the network interface to listen on.  Specify this with the `--interface` flag (e.g., `--interface enp44s0`).
+2. The URI to the `libvirtd` to be used.  Specify this with the `--libvirturi` flag (e.g., `qemu+tcp:///system`).
+
 
 The daemon will keep running until killed with a SIGINT (`^c`).
 

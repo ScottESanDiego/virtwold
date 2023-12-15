@@ -24,10 +24,12 @@ import (
 
 func main() {
 	var iface string                                                         // Interface we'll listen on
+	var libvirturi string                                                    // URI to the libvirt daemon
 	var buffer = int32(1600)                                                 // Buffer for packets received
 	var filter = "udp and broadcast and (len = 102 or len = 144 or len=234)" // PCAP filter to catch UDP WOL packets
 
-	flag.StringVar(&iface, "interface", "", "Network interface name to listen on")
+	flag.StringVar(&iface, "interface", "eth0", "Network interface name to listen on")
+	flag.StringVar(&libvirturi, "libvirturi", "qemu+tcp:///system", "URI to libvirt daemon, such as qemu:///system")
 	flag.Parse()
 
 	if !deviceExists(iface) {
@@ -53,7 +55,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error with packet: %v", err)
 		}
-		WakeVirtualMachine(mac)
+		WakeVirtualMachine(mac, libvirturi)
 	}
 }
 
@@ -69,9 +71,9 @@ func GrabMACAddr(packet gopacket.Packet) (string, error) {
 	return "", errors.New("no MAC found in packet")
 }
 
-func WakeVirtualMachine(mac string) bool {
+func WakeVirtualMachine(mac string, libvirturi string) bool {
 	// Connect to the local libvirt socket
-	connection, err := libvirt.NewConnect("qemu+tcp:///system")
+	connection, err := libvirt.NewConnect(libvirturi)
 	if err != nil {
 		log.Fatalf("failed to connect: %v", err)
 	}
