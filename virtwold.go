@@ -111,26 +111,23 @@ func WakeVirtualMachine(mac string) bool {
 					log.Fatalf("failed to check domain state: %v", err)
 				}
 
+				// Print an informative message about the state of things
 				switch state {
 				case libvirt.DOMAIN_SHUTDOWN, libvirt.DOMAIN_SHUTOFF, libvirt.DOMAIN_CRASHED:
 					fmt.Printf("Waking system: %s at MAC %s\n", name, mac)
-					if err := domain.Create(); err != nil {
-						log.Fatalf("Failed to start domain: %v", err)
-					}
 
 				case libvirt.DOMAIN_PMSUSPENDED:
 					fmt.Printf("Unsuspending system: %s at MAC %s\n", name, mac)
-					if err := domain.Create(); err != nil {
-						log.Fatalf("Failed to unsuspend domain: %v", err)
-					}
 
 				case libvirt.DOMAIN_PAUSED:
 					fmt.Printf("Resuming system: %s at MAC %s\n", name, mac)
-					if err := domain.Create(); err != nil {
-						log.Fatalf("Failed to resume domain: %v", err)
-					}
 
 				default:
+				}
+
+				// Try and start the VM
+				err = domain.Create()
+				if err != nil {
 					fmt.Printf("System is already running or in a state that cannot be woken from. State: %d\n", state)
 				}
 			}
