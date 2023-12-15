@@ -14,4 +14,6 @@ require (
 	golang.org/x/net v0.5.0 // indirect
 	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/text v0.6.0 // indirect
+	libvirt.org/go/libvirt v1.9008.0 // indirect
+	libvirt.org/go/libvirtxml v1.9008.0 // indirect
 )
