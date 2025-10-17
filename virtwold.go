@@ -15,11 +15,12 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log"
+
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
 	"libvirt.org/go/libvirt"
 	"libvirt.org/go/libvirtxml"
-	"log"
 )
 
 func main() {

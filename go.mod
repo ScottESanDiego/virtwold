@@ -1,19 +1,14 @@
 module github.com/scottesandiego/virtwold/v2
 
-go 1.20
+go 1.25
 
 require (
-	github.com/antchfx/xmlquery v1.3.15
-	github.com/digitalocean/go-libvirt v0.0.0-20221205150000-2939327a8519
 	github.com/google/gopacket v1.1.19
+	libvirt.org/go/libvirt v1.11006.0
+	libvirt.org/go/libvirtxml v1.11008.0
 )
 
 require (
-	github.com/antchfx/xpath v1.2.3 // indirect
-	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	golang.org/x/net v0.5.0 // indirect
-	golang.org/x/sys v0.4.0 // indirect
-	golang.org/x/text v0.6.0 // indirect
-	libvirt.org/go/libvirt v1.9008.0 // indirect
-	libvirt.org/go/libvirtxml v1.9008.0 // indirect
+	golang.org/x/sys v0.37.0 // indirect
 )
