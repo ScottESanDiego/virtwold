@@ -36,9 +36,10 @@ const (
 func main() {
 	var iface string        // Interface we'll listen on
 	var libvirturi string   // URI to the libvirt daemon
-	var buffer = int32(128) // Small buffer - WOL packets are only 102-108 bytes
-	// Optimized BPF filter: UDP port 9 (standard WOL port), size range 100-110 bytes
-	var filter = "udp and dst port 9 and greater 100 and less 110"
+	var buffer = int32(160) // Small buffer for WOL packets with headers
+	// Optimized BPF filter: UDP port 9 (standard WOL port), reasonable packet size
+	// Note: 'greater' checks total packet length (headers + payload), not just UDP payload
+	var filter = "udp and dst port 9 and greater 100"
 
 	flag.StringVar(&iface, "interface", "eth0", "Network interface name to listen on")
 	flag.StringVar(&libvirturi, "libvirturi", "qemu+tcp:///system", "URI to libvirt daemon, such as qemu:///system")
