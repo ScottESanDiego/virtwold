@@ -2,3 +2,11 @@
 #
 # Specify the interface to be used
 VIRTWOLD_INTERFACE="eth0"
+
+# Specify the libvirt URI to connect to
+# Default: qemu+tcp:///system
+# Examples:
+#   qemu:///system          - Local QEMU/KVM connection via Unix socket
+#   qemu+tcp:///system      - Local QEMU/KVM connection via TCP
+#   qemu+ssh://user@host/system - Remote connection via SSH
+VIRTWOLD_LIBVIRTURI="qemu+tcp:///system"

@@ -5,27 +5,33 @@
 name="virtwold daemon"
 description="Virtual Wake-on-LAN Daemon"
 command=/usr/bin/virtwold
-command_args="--interface ${VIRTWOLD_INTERFACE}"
+command_args="--interface ${VIRTWOLD_INTERFACE} --libvirturi ${VIRTWOLD_LIBVIRTURI:-qemu+tcp:///system}"
 
 PIDFILE=/run/virtwold.pid
 
 depend() {
 	need net
+	use libvirtd
 }
 
 start() {
+	ebegin "Starting ${name}"
 	start-stop-daemon \
 		--start \
 		--exec ${command} \
 		--background \
 		--stdout-logger /usr/bin/logger \
+		--stderr-logger /usr/bin/logger \
 		--make-pidfile \
 		--pidfile "${PIDFILE}" \
 		-- ${command_args}
+	eend $?
 }
 
 stop() {
+	ebegin "Stopping ${name}"
 	start-stop-daemon \
 		--stop \
 		--pidfile "${PIDFILE}"
+	eend $?
 }
