@@ -24,16 +24,21 @@ import (
 )
 
 const (
-	// WOL packet structure offsets
-	wolMACOffset = 12
-	wolMACLength = 6
+	// WOL packet structure
+	wolHeaderSize  = 6                                            // 6 bytes of 0xFF
+	wolMACSize     = 6                                            // MAC address is 6 bytes
+	wolMACRepeats  = 16                                           // MAC repeated 16 times
+	wolMinSize     = wolHeaderSize + (wolMACSize * wolMACRepeats) // 102 bytes minimum
+	wolPasswordMin = 4                                            // Optional password 4 or 6 bytes
+	wolPasswordMax = 6
 )
 
 func main() {
-	var iface string                                                         // Interface we'll listen on
-	var libvirturi string                                                    // URI to the libvirt daemon
-	var buffer = int32(1600)                                                 // Buffer for packets received
-	var filter = "udp and broadcast and (len = 102 or len = 144 or len=234)" // PCAP filter to catch UDP WOL packets
+	var iface string        // Interface we'll listen on
+	var libvirturi string   // URI to the libvirt daemon
+	var buffer = int32(128) // Small buffer - WOL packets are only 102-108 bytes
+	// Optimized BPF filter: UDP port 9 (standard WOL port), size range 100-110 bytes
+	var filter = "udp and dst port 9 and greater 100 and less 110"
 
 	flag.StringVar(&iface, "interface", "eth0", "Network interface name to listen on")
 	flag.StringVar(&libvirturi, "libvirturi", "qemu+tcp:///system", "URI to libvirt daemon, such as qemu:///system")
@@ -58,7 +63,7 @@ func main() {
 	source := gopacket.NewPacketSource(handler, handler.LinkType())
 	for packet := range source.Packets() {
 		// Called for each packet received
-		log.Printf("Received WOL packet")
+		log.Printf("Received potential WOL packet")
 		mac, err := GrabMACAddr(packet)
 		if err != nil {
 			log.Printf("Warning: Error parsing packet: %v", err)
@@ -70,7 +75,8 @@ func main() {
 	}
 }
 
-// Return the first MAC address seen in the WOL packet
+// Extract and validate MAC address from WOL magic packet
+// WOL packet structure: 6 bytes of 0xFF + MAC repeated 16 times + optional password
 func GrabMACAddr(packet gopacket.Packet) (string, error) {
 	app := packet.ApplicationLayer()
 	if app == nil {
@@ -78,14 +84,23 @@ func GrabMACAddr(packet gopacket.Packet) (string, error) {
 	}
 
 	payload := app.Payload()
-	if len(payload) < wolMACOffset+wolMACLength {
-		return "", fmt.Errorf("payload too short: got %d bytes, need at least %d", len(payload), wolMACOffset+wolMACLength)
+	if len(payload) < wolMinSize {
+		return "", fmt.Errorf("payload too short: got %d bytes, need at least %d", len(payload), wolMinSize)
 	}
 
+	// Validate sync stream: first 6 bytes must be 0xFF
+	for i := 0; i < wolHeaderSize; i++ {
+		if payload[i] != 0xFF {
+			return "", fmt.Errorf("invalid WOL header: byte %d is 0x%02x, expected 0xFF", i, payload[i])
+		}
+	}
+
+	// Extract MAC from first repetition (bytes 6-11)
+	macOffset := wolHeaderSize
 	mac := fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x",
-		payload[wolMACOffset], payload[wolMACOffset+1], payload[wolMACOffset+2],
-		payload[wolMACOffset+3], payload[wolMACOffset+4], payload[wolMACOffset+5])
-	log.Printf("Found target MAC: %s", mac)
+		payload[macOffset], payload[macOffset+1], payload[macOffset+2],
+		payload[macOffset+3], payload[macOffset+4], payload[macOffset+5])
+	log.Printf("Validated WOL packet for MAC: %s", mac)
 	return mac, nil
 }
 
