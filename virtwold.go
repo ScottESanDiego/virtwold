@@ -1,11 +1,11 @@
 //
 // Virtual Wake-on-LAN
 //
-// Listens for a WOL magic packet (UDP), then connects to the local libvirt socket and finds a matching VM
-// If a matching VM is found, it is started (if not already running)
+// Listens for a WOL magic packet (UDP), then connects to libvirt and finds a matching inactive VM
+// If a matching VM is found and is not running, it is started
 //
 // Assumes the VM has a static MAC configured
-// Assumes libvirtd connection is at /var/run/libvirt/libvirt-sock
+// Uses configurable libvirt URI (default: qemu+tcp:///system)
 //
 // Filters on len=102 and len=144 (WOL packet) and len=234 (WOL packet with password)
 
@@ -21,6 +21,12 @@ import (
 	"github.com/google/gopacket/pcap"
 	"libvirt.org/go/libvirt"
 	"libvirt.org/go/libvirtxml"
+)
+
+const (
+	// WOL packet structure offsets
+	wolMACOffset = 12
+	wolMACLength = 6
 )
 
 func main() {
@@ -48,56 +54,69 @@ func main() {
 	}
 
 	// Handle every packet received, looping forever
+	log.Printf("Listening for WOL packets on %s (libvirt URI: %s)", iface, libvirturi)
 	source := gopacket.NewPacketSource(handler, handler.LinkType())
 	for packet := range source.Packets() {
 		// Called for each packet received
-		fmt.Printf("Received WOL packet, ")
+		log.Printf("Received WOL packet")
 		mac, err := GrabMACAddr(packet)
 		if err != nil {
-			log.Fatalf("Error with packet: %v", err)
+			log.Printf("Warning: Error parsing packet: %v", err)
+			continue
 		}
-		WakeVirtualMachine(mac, libvirturi)
+		if err := WakeVirtualMachine(mac, libvirturi); err != nil {
+			log.Printf("Error waking virtual machine: %v", err)
+		}
 	}
 }
 
 // Return the first MAC address seen in the WOL packet
 func GrabMACAddr(packet gopacket.Packet) (string, error) {
 	app := packet.ApplicationLayer()
-	if app != nil {
-		payload := app.Payload()
-		mac := fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x", payload[12], payload[13], payload[14], payload[15], payload[16], payload[17])
-		fmt.Printf("found MAC: %s\n", mac)
-		return mac, nil
+	if app == nil {
+		return "", errors.New("no application layer found in packet")
 	}
-	return "", errors.New("no MAC found in packet")
+
+	payload := app.Payload()
+	if len(payload) < wolMACOffset+wolMACLength {
+		return "", fmt.Errorf("payload too short: got %d bytes, need at least %d", len(payload), wolMACOffset+wolMACLength)
+	}
+
+	mac := fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x",
+		payload[wolMACOffset], payload[wolMACOffset+1], payload[wolMACOffset+2],
+		payload[wolMACOffset+3], payload[wolMACOffset+4], payload[wolMACOffset+5])
+	log.Printf("Found target MAC: %s", mac)
+	return mac, nil
 }
 
-func WakeVirtualMachine(mac string, libvirturi string) bool {
+func WakeVirtualMachine(mac string, libvirturi string) error {
 	// Connect to the local libvirt socket
 	connection, err := libvirt.NewConnect(libvirturi)
 	if err != nil {
-		log.Fatalf("failed to connect: %v", err)
+		return fmt.Errorf("failed to connect to libvirt: %w", err)
 	}
 	defer connection.Close()
 
 	// Get a list of all inactive VMs (aka Domains) configured so we can loop through them
 	domains, err := connection.ListAllDomains(libvirt.CONNECT_LIST_DOMAINS_INACTIVE)
 	if err != nil {
-		log.Fatalf("failed to retrieve domains: %v", err)
+		return fmt.Errorf("failed to retrieve domains: %w", err)
 	}
 
 	for _, domain := range domains {
 		// Now we get the XML Description for each domain
 		xmldesc, err := domain.GetXMLDesc(0)
 		if err != nil {
-			log.Fatalf("failed retrieving XML: %v", err)
+			log.Printf("Warning: Failed retrieving XML for domain: %v", err)
+			continue
 		}
 
 		// Get the details for each domain
 		domcfg := &libvirtxml.Domain{}
 		err = domcfg.Unmarshal(xmldesc)
 		if err != nil {
-			log.Fatalf("failed retrieving domain configuration: %v", err)
+			log.Printf("Warning: Failed parsing domain configuration: %v", err)
+			continue
 		}
 
 		// Loop through each interface found
@@ -111,46 +130,52 @@ func WakeVirtualMachine(mac string, libvirturi string) bool {
 				// Get the state of the VM and take action
 				state, _, err := domain.GetState()
 				if err != nil {
-					log.Fatalf("failed to check domain state: %v", err)
+					log.Printf("Warning: Failed to check domain state for %s: %v", name, err)
+					continue
 				}
 
 				// Print an informative message about the state of things
 				switch state {
 				case libvirt.DOMAIN_SHUTDOWN, libvirt.DOMAIN_SHUTOFF, libvirt.DOMAIN_CRASHED:
-					fmt.Printf("Waking system: %s at MAC %s\n", name, mac)
+					log.Printf("Waking system: %s at MAC %s", name, mac)
 
 				case libvirt.DOMAIN_PMSUSPENDED:
-					fmt.Printf("Unsuspending system: %s at MAC %s\n", name, mac)
+					log.Printf("Unsuspending system: %s at MAC %s", name, mac)
 
 				case libvirt.DOMAIN_PAUSED:
-					fmt.Printf("Resuming system: %s at MAC %s\n", name, mac)
+					log.Printf("Resuming system: %s at MAC %s", name, mac)
 
 				default:
+					log.Printf("System %s at MAC %s is already running (state: %d)", name, mac, state)
+					return nil
 				}
 
 				// Try and start the VM
 				err = domain.Create()
 				if err != nil {
-					fmt.Printf("System is already running or in a state that cannot be woken from. State: %d\n", state)
+					return fmt.Errorf("failed to start domain %s: %w", name, err)
 				}
+				log.Printf("Successfully started domain: %s", name)
+				return nil
 			}
 		}
 	}
 
-	return true
+	return fmt.Errorf("no domain found with MAC address: %s", mac)
 }
 
 // Check if the network device exists
 func deviceExists(interfacename string) bool {
 	if interfacename == "" {
-		fmt.Printf("No interface to listen on specified\n\n")
+		log.Println("Error: No interface to listen on specified")
 		flag.PrintDefaults()
 		return false
 	}
 	devices, err := pcap.FindAllDevs()
 
 	if err != nil {
-		log.Panic(err)
+		log.Printf("Error: Failed to find network devices: %v", err)
+		return false
 	}
 
 	for _, device := range devices {
