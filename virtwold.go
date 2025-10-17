@@ -177,7 +177,7 @@ func WakeVirtualMachine(mac string, libvirturi string) error {
 		}
 	}
 
-	return fmt.Errorf("no domain found with MAC address: %s", mac)
+	return fmt.Errorf("no inactive domain found with MAC address: %s", mac)
 }
 
 // Check if the network device exists
