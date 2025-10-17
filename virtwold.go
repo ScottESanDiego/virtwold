@@ -25,12 +25,10 @@ import (
 
 const (
 	// WOL packet structure
-	wolHeaderSize  = 6                                            // 6 bytes of 0xFF
-	wolMACSize     = 6                                            // MAC address is 6 bytes
-	wolMACRepeats  = 16                                           // MAC repeated 16 times
-	wolMinSize     = wolHeaderSize + (wolMACSize * wolMACRepeats) // 102 bytes minimum
-	wolPasswordMin = 4                                            // Optional password 4 or 6 bytes
-	wolPasswordMax = 6
+	wolHeaderSize = 6                                            // 6 bytes of 0xFF
+	wolMACSize    = 6                                            // MAC address is 6 bytes
+	wolMACRepeats = 16                                           // MAC repeated 16 times
+	wolMinSize    = wolHeaderSize + (wolMACSize * wolMACRepeats) // 102 bytes minimum
 )
 
 func main() {
